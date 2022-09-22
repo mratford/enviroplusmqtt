@@ -42,7 +42,7 @@ DEFAULT_READ_INTERVAL = 5
 DEFAULT_TLS_MODE = False
 DEFAULT_USERNAME = None
 DEFAULT_PASSWORD = None
-
+DEFAULT_ID = "enviroplus"
 
 # mqtt callbacks
 def on_connect(client, userdata, flags, rc):
@@ -107,7 +107,7 @@ def check_wifi():
 
 
 # Display Raspberry Pi serial and Wi-Fi status on LCD
-def display_status(disp, mqtt_broker):
+def display_status(disp, temp, humid):
     # Width and height to calculate text position
     WIDTH = disp.width
     HEIGHT = disp.height
@@ -115,13 +115,9 @@ def display_status(disp, mqtt_broker):
     font_size = 12
     font = ImageFont.truetype(UserFont, font_size)
 
-    wifi_status = "connected" if check_wifi() else "disconnected"
     text_colour = (255, 255, 255)
     back_colour = (0, 170, 170) if check_wifi() else (85, 15, 15)
-    device_serial_number = get_serial_number()
-    message = "{}\nWi-Fi: {}\nmqtt-broker: {}".format(
-        device_serial_number, wifi_status, mqtt_broker
-    )
+    message = f"Temperature {temp}°C\nHumidity {humid}%"
     img = Image.new("RGB", (WIDTH, HEIGHT), color=(0, 0, 0))
     draw = ImageDraw.Draw(img)
     size_x, size_y = draw.textsize(message, font)
@@ -175,29 +171,37 @@ def main():
         type=str,
         help="mqtt password"
     )
+    parser.add_argument(
+        "--device_id",
+        default=DEFAULT_ID,
+        type=str,
+        help="id of device"
+    )
+    parser.add_argument(
+        "--upsidedown",
+        action="store_true",
+        help="turn display upside-down"
+    )
     args = parser.parse_args()
-
-    # Raspberry Pi ID
-    device_serial_number = get_serial_number()
-    device_id = "raspi-" + device_serial_number
 
     print(
         f"""mqtt-all.py - Reads Enviro plus data and sends over mqtt.
 
     broker: {args.broker}
-    client_id: {device_id}
     port: {args.port}
     topic: {args.topic}
     tls: {args.tls}
     username: {args.username}
     password: {args.password}
+    device_id: {args.device_id}
+    upsidedown: {args.upsidedown}
 
     Press Ctrl+C to exit!
 
     """
     )
 
-    mqtt_client = mqtt.Client(client_id=device_id)
+    mqtt_client = mqtt.Client(client_id=args.device_id)
     if args.username and args.password:
         mqtt_client.username_pw_set(args.username, args.password)
     mqtt_client.on_connect = on_connect
@@ -218,7 +222,12 @@ def main():
 
     # Create LCD instance
     disp = ST7735.ST7735(
-        port=0, cs=1, dc=9, backlight=12, rotation=270, spi_speed_hz=10000000
+        port=0,
+        cs=1,
+        dc=9,
+        backlight=12,
+        rotation=90 if args.upsidedown else 270,
+        spi_speed_hz=10000000
     )
 
     # Initialize display
@@ -234,11 +243,6 @@ def main():
     except SerialTimeoutError:
         print("No PMS5003 sensor connected")
 
-    # Display Raspberry Pi serial and Wi-Fi status
-    print("RPi serial: {}".format(device_serial_number))
-    print("Wi-Fi: {}\n".format("connected" if check_wifi() else "disconnected"))
-    print("MQTT broker IP: {}".format(args.broker))
-
     # Main loop to read data, display, and send over mqtt
     mqtt_client.loop_start()
     while True:
@@ -247,10 +251,10 @@ def main():
             if HAS_PMS:
                 pms_values = read_pms5003(pms5003)
                 values.update(pms_values)
-            values["serial"] = device_serial_number
+            values["id"] = args.device_id
             print(values)
             mqtt_client.publish(args.topic, json.dumps(values), retain=True)
-            display_status(disp, args.broker)
+            display_status(disp, values["temperature"], values["humidity"])
             time.sleep(args.interval)
         except Exception as e:
             print(e)
