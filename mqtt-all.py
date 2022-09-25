@@ -115,8 +115,8 @@ def display_status(disp, temp, humid):
     font_size = 12
     font = ImageFont.truetype(UserFont, font_size)
 
-    text_colour = (255, 255, 255)
-    back_colour = (0, 170, 170) if check_wifi() else (85, 15, 15)
+    text_colour = (128, 128, 128)
+    back_colour = (0, 0, 0)
     message = f"Temperature {temp}°C\nHumidity {humid}%"
     img = Image.new("RGB", (WIDTH, HEIGHT), color=(0, 0, 0))
     draw = ImageDraw.Draw(img)
