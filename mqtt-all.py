@@ -129,9 +129,7 @@ def display_status(disp, temp, humid):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Publish enviroplus values over mqtt"
-    )
+    parser = argparse.ArgumentParser(description="Publish enviroplus values over mqtt")
     parser.add_argument(
         "--broker",
         default=DEFAULT_MQTT_BROKER_IP,
@@ -154,33 +152,19 @@ def main():
         help="the read interval in seconds",
     )
     parser.add_argument(
-        "--tls",
-        default=DEFAULT_TLS_MODE,
-        action='store_true',
-        help="enable TLS"
+        "--tls", default=DEFAULT_TLS_MODE, action="store_true", help="enable TLS"
     )
     parser.add_argument(
-        "--username",
-        default=DEFAULT_USERNAME,
-        type=str,
-        help="mqtt username"
+        "--username", default=DEFAULT_USERNAME, type=str, help="mqtt username"
     )
     parser.add_argument(
-        "--password",
-        default=DEFAULT_PASSWORD,
-        type=str,
-        help="mqtt password"
+        "--password", default=DEFAULT_PASSWORD, type=str, help="mqtt password"
     )
     parser.add_argument(
-        "--device_id",
-        default=DEFAULT_ID,
-        type=str,
-        help="id of device"
+        "--device_id", default=DEFAULT_ID, type=str, help="id of device"
     )
     parser.add_argument(
-        "--upsidedown",
-        action="store_true",
-        help="turn display upside-down"
+        "--upsidedown", action="store_true", help="turn display upside-down"
     )
     args = parser.parse_args()
 
@@ -227,7 +211,7 @@ def main():
         dc=9,
         backlight=12,
         rotation=90 if args.upsidedown else 270,
-        spi_speed_hz=10000000
+        spi_speed_hz=10000000,
     )
 
     # Initialize display
@@ -245,6 +229,7 @@ def main():
 
     # Main loop to read data, display, and send over mqtt
     mqtt_client.loop_start()
+    start = time.time()
     while True:
         try:
             values = read_bme280(bme280)
@@ -255,7 +240,8 @@ def main():
             print(values)
             mqtt_client.publish(args.topic, json.dumps(values), retain=True)
             display_status(disp, values["temperature"], values["humidity"])
-            time.sleep(args.interval)
+            start = start + args.interval
+            time.sleep(start - time.time())
         except Exception as e:
             print(e)
 
