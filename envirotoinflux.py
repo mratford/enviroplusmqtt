@@ -5,18 +5,7 @@ import queue
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.write_api import SYNCHRONOUS
 from collections import defaultdict
-
-
-def modtick(n):
-    # Return generator yielding True every n calls, else False
-    def f():
-        i = 0
-        while True:
-            yield i == 0
-            i = (i + 1) % n
-
-    return f()
-
+import datetime
 
 q = queue.Queue()
 
@@ -88,12 +77,13 @@ def main():
         org=args.influxorg,
     ) as influx_client:
         write_api = influx_client.write_api(write_options=SYNCHRONOUS)
-        # Send data every 10 minutes, each enviro sends message every 5 seconds
-        ticks = defaultdict(lambda: modtick(10 * 60 / 5))
+        next_msg = defaultdict(lambda: datetime.datetime.now())
+        # Send data every 10 minutes
         while True:
             m = q.get()
             # TODO send data to homebridge-mqttthing
-            if next(ticks[m["id"]]):
+            if datetime.datetime.now() >= next_msg[m["id"]]:
+                next_msg[m["id"]] += datetime.timedelta(minutes=10)
                 for k in set(m) - {"id"}:
                     data = f"{k},location=enviro_{m['id']} {k}={m[k]}"
                     write_api.write(args.influxbucket, args.influxorg, data)
