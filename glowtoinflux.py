@@ -78,7 +78,7 @@ def main():
     mqtt_client.on_publish = on_publish
     mqtt_client.on_message = on_message
     mqtt_client.connect(args.mqttbroker, port=args.mqttport)
-    mqtt_client.subscribe("enviro")
+    mqtt_client.subscribe("glow")
 
     mqtt_client.loop_start()
 
@@ -92,11 +92,12 @@ def main():
         ticks = defaultdict(lambda: modtick(10 * 60 / 5))
         while True:
             m = q.get()
+            print(m)
             # TODO send data to homebridge-mqttthing
-            if next(ticks[m["id"]]):
-                for k in set(m) - {"id"}:
-                    data = f"{k},location=enviro_{m['id']} {k}={m[k]}"
-                    write_api.write(args.influxbucket, args.influxorg, data)
+            # if next(ticks[m["id"]]):
+            #     for k in set(m) - {"id"}:
+            #         data = f"{k},location=enviro_{m['id']} {k}={m[k]}"
+            #         write_api.write(args.influxbucket, args.influxorg, data)
 
 
 if __name__ == "__main__":
