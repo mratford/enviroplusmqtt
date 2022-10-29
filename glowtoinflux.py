@@ -37,10 +37,7 @@ def on_publish(client, userdata, mid):
 
 def main():
     parser = argparse.ArgumentParser(
-        description=(
-            "Receive enviroplus values over mqtt and send to homebridge-mqttthing"
-            " and influxdb"
-        )
+        description=("Receive smart meter values over mqtt and send to influxdb")
     )
     parser.add_argument(
         "--mqttbroker",
@@ -57,7 +54,7 @@ def main():
     parser.add_argument("--mqttuser", default=None, type=str, help="mqtt username")
     parser.add_argument("--mqttpass", default=None, type=str, help="mqtt password")
     parser.add_argument(
-        "--client_id", default="envirotoinflux", type=str, help="Client id for mqtt"
+        "--client_id", default="glowtoinflux", type=str, help="Client id for mqtt"
     )
     parser.add_argument("--influxtoken", type=str, help="influxdb token")
     parser.add_argument("--influxorg", type=str, help="infludb org")
@@ -78,7 +75,7 @@ def main():
     mqtt_client.on_publish = on_publish
     mqtt_client.on_message = on_message
     mqtt_client.connect(args.mqttbroker, port=args.mqttport)
-    mqtt_client.subscribe("glow")
+    mqtt_client.subscribe("glow/#")
 
     mqtt_client.loop_start()
 
@@ -93,7 +90,7 @@ def main():
         while True:
             m = q.get()
             print(m)
-            # TODO send data to homebridge-mqttthing
+            print(m.keys())
             # if next(ticks[m["id"]]):
             #     for k in set(m) - {"id"}:
             #         data = f"{k},location=enviro_{m['id']} {k}={m[k]}"
