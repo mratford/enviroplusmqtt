@@ -2,8 +2,21 @@ import argparse
 import paho.mqtt.client as mqtt
 import json
 import queue
-from influxdb_client import InfluxDBClient, Point
+from influxdb_client import InfluxDBClient
 from influxdb_client.client.write_api import SYNCHRONOUS
+from collections import defaultdict
+
+
+def modtick(n):
+    # Return generator yielding True every n calls, else False
+    def f():
+        i = 0
+        while True:
+            yield i == 0
+            i = (i + 1) % n
+
+    return f()
+
 
 q = queue.Queue()
 
@@ -77,12 +90,15 @@ def main():
         org=args.influxorg,
     ) as influx_client:
         write_api = influx_client.write_api(write_options=SYNCHRONOUS)
+        # Send data every 10 minutes, each enviro sends message every 5 seconds
+        ticks = defaultdict(lambda: modtick(10 * 60 / 5))
         while True:
             m = q.get()
-            print(m)
-            for k in set(m) - {"id"}:
-                data = f"{k},location=enviro_{m['id']} {k}={m[k]}"
-                write_api.write(args.influxbucket, args.influxorg, data)
+            # TODO send data to homebridge-mqttthing
+            if next(ticks[m["id"]]):
+                for k in set(m) - {"id"}:
+                    data = f"{k},location=enviro_{m['id']} {k}={m[k]}"
+                    write_api.write(args.influxbucket, args.influxorg, data)
 
 
 if __name__ == "__main__":
